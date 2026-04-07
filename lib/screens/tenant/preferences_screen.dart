@@ -292,7 +292,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            _sectionTitle('�� Nombre de pièces minimum'),
+            _sectionTitle('🚪 Nombre de pièces minimum'),
             Row(
               children: [
                 IconButton(
