@@ -202,7 +202,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
           controller: _titleCtrl,
           decoration: const InputDecoration(
             labelText: 'Titre de l\'annonce',
-            hintText: 'Ex: Bel appartement lumineux Paris 11ème',
+            hintText: 'Ex: Bel appartement lumineux Tunis Lac',
           ),
           maxLength: 100,
           onChanged: (_) => setState(() {}),

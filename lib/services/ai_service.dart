@@ -333,9 +333,11 @@ class AiService {
       if (myPrefs != null &&
           myPrefs.budgetMax != null &&
           theirPrefs.budgetMax != null) {
-        final overlap = min(myPrefs.budgetMax!, theirPrefs.budgetMax!) -
-            max(myPrefs.budgetMin ?? 0, theirPrefs.budgetMin ?? 0);
-        if (overlap > 0) compatScore += 15;
+        final myMin = myPrefs.budgetMin ?? 0;
+        final theirMin = theirPrefs.budgetMin ?? 0;
+        final overlapStart = max(myMin, theirMin);
+        final overlapEnd = min(myPrefs.budgetMax!, theirPrefs.budgetMax!);
+        if (overlapEnd > overlapStart) compatScore += 15;
       }
 
       if (myPrefs != null &&
