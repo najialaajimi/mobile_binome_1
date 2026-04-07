@@ -3,7 +3,9 @@ import 'package:uuid/uuid.dart';
 import '../../models/listing.dart';
 import '../../services/listing_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/ai_service.dart';
 import '../../utils/constants.dart';
+import '../../utils/routes.dart';
 
 class CreateListingScreen extends StatefulWidget {
   const CreateListingScreen({super.key});
@@ -324,14 +326,38 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
       children: [
         _buildStepHeader('Loyer et disponibilité',
             'Définissez le prix mensuel et la date de disponibilité.'),
-        TextFormField(
-          controller: _priceCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Loyer mensuel (€)',
-            prefixIcon: Icon(Icons.euro),
-          ),
-          keyboardType: TextInputType.number,
-          onChanged: (_) => setState(() {}),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _priceCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Loyer mensuel (TND)',
+                  prefixIcon: Icon(Icons.monetization_on_outlined),
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.pushNamed(
+                    context, AppRoutes.priceSuggestion);
+                if (result != null && result is String) {
+                  setState(() => _priceCtrl.text = result);
+                }
+              },
+              icon: const Icon(Icons.auto_awesome, size: 16),
+              label: const Text('IA Prix'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         Row(
@@ -388,6 +414,15 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
           maxLines: 5,
           maxLength: 1000,
           onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _runFraudCheck(),
+          icon: const Icon(Icons.security_outlined),
+          label: const Text('Vérification IA anti-arnaque'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+          ),
         ),
         const SizedBox(height: 20),
         const Text('Équipements',
@@ -472,6 +507,76 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
         _amenityCtrl.clear();
       });
     }
+  }
+
+  void _runFraudCheck() {
+    final aiService = AiService();
+    final tempListing = Listing(
+      id: 'temp',
+      ownerId: '',
+      title: _titleCtrl.text,
+      description: _descCtrl.text,
+      type: _selectedType,
+      city: _cityCtrl.text,
+      address: _addressCtrl.text,
+      postalCode: _postalCtrl.text,
+      price: double.tryParse(_priceCtrl.text) ?? 0,
+      rooms: _rooms,
+      bedrooms: _bedrooms,
+      bathrooms: _bathrooms,
+      surface: double.tryParse(_surfaceCtrl.text) ?? 0,
+      isFurnished: _isFurnished,
+      photos: _photos,
+      amenities: _amenities,
+      isAvailable: true,
+      status: 'draft',
+      createdAt: DateTime.now(),
+    );
+    final result = aiService.detectFraud(tempListing);
+    final risk = result['risk'] as String;
+    final reasons = result['reasons'] as List<String>;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              risk == 'low' ? Icons.check_circle : Icons.warning,
+              color: risk == 'low' ? AppColors.success : (risk == 'high' ? AppColors.error : AppColors.secondary),
+            ),
+            const SizedBox(width: 8),
+            Text(risk == 'low' ? 'Annonce conforme' : risk == 'high' ? 'Risque élevé détecté' : 'Points à vérifier'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (reasons.isEmpty)
+              const Text('Aucun problème détecté. Votre annonce semble conforme.')
+            else
+              ...reasons.map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.circle, size: 8, color: AppColors.textSecondary),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(r, style: const TextStyle(fontSize: 13))),
+                      ],
+                    ),
+                  )),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Compris'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addPhoto() {

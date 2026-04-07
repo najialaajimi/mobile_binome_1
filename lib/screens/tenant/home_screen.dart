@@ -187,6 +187,30 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                children: [
+                  _AiCard(
+                    icon: '🤖',
+                    title: 'Recommandations IA',
+                    subtitle: 'Découvrez des logements adaptés à votre profil',
+                    buttonLabel: 'Voir mes recommandations',
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.aiRecommendations),
+                  ),
+                  const SizedBox(height: 10),
+                  _AiCard(
+                    icon: '👥',
+                    title: 'Trouver un binôme',
+                    subtitle: 'Trouvez un colocataire compatible',
+                    buttonLabel: 'Chercher un binôme',
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.roommateFinder),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -448,8 +472,8 @@ class _InlineSearchScreenState extends State<_InlineSearchScreen> {
                         controller: _minPriceCtrl,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          labelText: 'Prix min (€)',
-                          prefixIcon: Icon(Icons.euro),
+                          labelText: 'Prix min (TND)',
+                          prefixIcon: Icon(Icons.monetization_on_outlined),
                         ),
                       ),
                     ),
@@ -459,8 +483,8 @@ class _InlineSearchScreenState extends State<_InlineSearchScreen> {
                         controller: _maxPriceCtrl,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          labelText: 'Prix max (€)',
-                          prefixIcon: Icon(Icons.euro),
+                          labelText: 'Prix max (TND)',
+                          prefixIcon: Icon(Icons.monetization_on_outlined),
                         ),
                       ),
                     ),
@@ -765,6 +789,63 @@ class _ProfileMenuItem extends StatelessWidget {
       trailing:
           const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textSecondary),
       onTap: onTap,
+    );
+  }
+}
+
+class _AiCard extends StatelessWidget {
+  final String icon;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final VoidCallback onTap;
+  const _AiCard(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.buttonLabel,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withAlpha(15),
+            AppColors.primaryLight.withAlpha(10)
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withAlpha(40)),
+      ),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 28)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                        fontSize: 14)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onTap,
+            child: Text(buttonLabel,
+                style: const TextStyle(fontSize: 11)),
+          ),
+        ],
+      ),
     );
   }
 }

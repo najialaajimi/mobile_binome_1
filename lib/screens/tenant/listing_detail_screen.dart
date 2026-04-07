@@ -3,6 +3,8 @@ import '../../models/listing.dart';
 import '../../services/listing_service.dart';
 import '../../services/favorites_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/ai_service.dart';
+import '../../services/review_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/routes.dart';
 
@@ -18,9 +20,14 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   final _listingService = ListingService();
   final _favService = FavoritesService();
   final _authService = AuthService();
+  final _aiService = AiService();
+  final _reviewService = ReviewService();
 
   Listing? _listing;
   bool _isFavorite = false;
+  int? _compatScore;
+  double _reviewAvg = 0;
+  int _reviewCount = 0;
 
   @override
   void initState() {
@@ -32,6 +39,16 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     _listing = _listingService.getListingById(widget.listingId);
     if (_listing != null) {
       await _listingService.incrementViews(widget.listingId);
+      final userId = _authService.getCurrentUser()?.id ?? '';
+      if (userId.isNotEmpty) {
+        await _aiService.addToViewHistory(userId, widget.listingId);
+        final prefs = _aiService.getUserPreferences(userId);
+        if (prefs != null) {
+          _compatScore = _aiService.getCompatibilityScore(prefs, _listing!);
+        }
+      }
+      _reviewAvg = _reviewService.getAverageScore(widget.listingId);
+      _reviewCount = _reviewService.getReviewsForListing(widget.listingId).length;
     }
     final userId = _authService.getCurrentUser()?.id ?? '';
     setState(() {
@@ -43,6 +60,12 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final idx =
         widget.listingId.hashCode.abs() % AppConstants.listingColors.length;
     return AppConstants.listingColors[idx];
+  }
+
+  Color _compatColor(int score) {
+    if (score >= 80) return AppColors.success;
+    if (score >= 50) return AppColors.secondary;
+    return AppColors.error;
   }
 
   @override
@@ -152,6 +175,55 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                       ),
                     ],
                   ),
+                  if (_compatScore != null || l.fraudRisk != 'low') ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (_compatScore != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _compatColor(_compatScore!).withAlpha(20),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.auto_awesome, size: 12, color: _compatColor(_compatScore!)),
+                                const SizedBox(width: 4),
+                                Text('Match $_compatScore%',
+                                    style: TextStyle(color: _compatColor(_compatScore!), fontSize: 12, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        if (_compatScore != null && l.fraudRisk != 'low')
+                          const SizedBox(width: 8),
+                        if (l.fraudRisk != 'low')
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: (l.fraudRisk == 'high' ? AppColors.error : AppColors.secondary).withAlpha(20),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_outlined, size: 12,
+                                    color: l.fraudRisk == 'high' ? AppColors.error : AppColors.secondary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  l.fraudRisk == 'high' ? 'Risque élevé' : 'Vérifier',
+                                  style: TextStyle(
+                                      color: l.fraudRisk == 'high' ? AppColors.error : AppColors.secondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Text(
                     l.title,
@@ -176,7 +248,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '${l.price.toStringAsFixed(0)} €/mois',
+                    '${l.price.toStringAsFixed(0)} TND/mois',
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -255,6 +327,63 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                           .toList(),
                     ),
                   ],
+                  if (l.nearbyUniversities.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Universités proches',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: l.nearbyUniversities
+                          .map((u) => Chip(
+                                avatar: const Icon(Icons.school_outlined, size: 16, color: AppColors.primary),
+                                label: Text(u, style: const TextStyle(fontSize: 12)),
+                                backgroundColor: AppColors.primary.withAlpha(10),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        'Avis',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.listingReviews,
+                          arguments: {'listingId': l.id},
+                        ),
+                        child: const Text('Voir tous'),
+                      ),
+                    ],
+                  ),
+                  if (_reviewCount == 0)
+                    const Text('Aucun avis pour ce logement.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 14))
+                  else
+                    Row(
+                      children: [
+                        ...List.generate(5, (i) {
+                          return Icon(
+                            i < _reviewAvg.floor() ? Icons.star : (i < _reviewAvg ? Icons.star_half : Icons.star_border),
+                            color: AppColors.secondary,
+                            size: 20,
+                          );
+                        }),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_reviewAvg.toStringAsFixed(1)} ($_reviewCount avis)',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 24),
                   const Text(
                     'Propriétaire',

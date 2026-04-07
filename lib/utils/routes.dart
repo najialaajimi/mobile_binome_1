@@ -26,4 +26,11 @@ class AppRoutes {
   // Messaging
   static const conversations = '/messages/conversations';
   static const chat = '/messages/chat';
+
+  // AI features
+  static const aiRecommendations = '/tenant/ai-recommendations';
+  static const preferences = '/tenant/preferences';
+  static const roommateFinder = '/tenant/roommate-finder';
+  static const listingReviews = '/listing/reviews';
+  static const priceSuggestion = '/owner/price-suggestion';
 }

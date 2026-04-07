@@ -166,7 +166,7 @@ class ListingCard extends StatelessWidget {
                           label: '${listing.surface.toStringAsFixed(0)} m²'),
                       const Spacer(),
                       Text(
-                        '${listing.price.toStringAsFixed(0)} €/mois',
+                        '${listing.price.toStringAsFixed(0)} TND/mois',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,

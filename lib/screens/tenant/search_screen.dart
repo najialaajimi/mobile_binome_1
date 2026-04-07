@@ -141,7 +141,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: TextField(
                   controller: _minPriceCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Prix min (€)'),
+                  decoration: const InputDecoration(labelText: 'Prix min (TND)'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -149,7 +149,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: TextField(
                   controller: _maxPriceCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Prix max (€)'),
+                  decoration: const InputDecoration(labelText: 'Prix max (TND)'),
                 ),
               ),
             ],

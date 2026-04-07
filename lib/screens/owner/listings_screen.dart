@@ -132,7 +132,7 @@ class _OwnerListingsScreenState extends State<OwnerListingsScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${l.city} • ${l.price.toStringAsFixed(0)} €/mois',
+                          Text('${l.city} • ${l.price.toStringAsFixed(0)} TND/mois',
                               style: const TextStyle(fontSize: 12)),
                           Row(
                             children: [

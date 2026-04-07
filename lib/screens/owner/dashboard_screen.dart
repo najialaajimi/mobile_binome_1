@@ -405,7 +405,7 @@ class _OwnerListingsInlineState extends State<_OwnerListingsInline> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${l.city} • ${l.price.toStringAsFixed(0)} €/mois',
+                          Text('${l.city} • ${l.price.toStringAsFixed(0)} TND/mois',
                               style: const TextStyle(fontSize: 12)),
                           const SizedBox(height: 2),
                           Row(

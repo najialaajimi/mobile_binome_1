@@ -25,6 +25,12 @@ import 'screens/owner/applications_screen.dart';
 import 'screens/owner/agenda_screen.dart';
 import 'screens/owner/profile_screen.dart';
 import 'screens/admin/dashboard_screen.dart';
+import 'services/review_service.dart';
+import 'screens/tenant/ai_recommendations_screen.dart';
+import 'screens/tenant/preferences_screen.dart';
+import 'screens/tenant/roommate_finder_screen.dart';
+import 'screens/tenant/listing_reviews_screen.dart';
+import 'screens/owner/price_suggestion_screen.dart';
 import 'screens/messaging/conversations_screen.dart';
 import 'screens/messaging/chat_screen.dart';
 
@@ -43,6 +49,7 @@ Future<void> main() async {
   await BookingService().init();
   await MessageService().init();
   await ApplicationService().init();
+  await ReviewService().init();
 
   runApp(const LogementApp());
 }
@@ -137,6 +144,23 @@ class LogementApp extends StatelessWidget {
           conversationId: conversationId,
           otherUserName: otherUserName,
         ));
+
+      case AppRoutes.aiRecommendations:
+        return _route(const AiRecommendationsScreen());
+
+      case AppRoutes.preferences:
+        return _route(const PreferencesScreen());
+
+      case AppRoutes.roommateFinder:
+        return _route(const RoommateFinderScreen());
+
+      case AppRoutes.listingReviews:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final listingId = args?['listingId'] as String? ?? '';
+        return _route(ListingReviewsScreen(listingId: listingId));
+
+      case AppRoutes.priceSuggestion:
+        return _route(const PriceSuggestionScreen());
 
       default:
         return _route(const SplashScreen());

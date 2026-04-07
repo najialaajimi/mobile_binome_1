@@ -6,7 +6,7 @@ import 'storage_service.dart';
 class AuthService {
   static const _usersKey = 'users';
   static const _currentUserKey = 'current_user';
-  static const _seededKey = 'auth_seeded';
+  static const _seededKey = 'auth_seeded_v2';
 
   final StorageService _storage = StorageService.instance;
 
@@ -29,49 +29,87 @@ class AuthService {
         password: _hashPassword('admin123'),
         role: AppConstants.roleAdmin,
         isVerified: true,
+        nationality: 'Tunisien',
+        preferredLanguage: 'fr',
         createdAt: DateTime.now().subtract(const Duration(days: 365)),
       ),
       AppUser(
         id: 'owner_1',
-        fullName: 'Jean Dupont',
+        fullName: 'Karim Mansour',
         email: 'proprietaire@test.com',
         password: _hashPassword('test123'),
         role: AppConstants.roleOwner,
         isVerified: true,
+        nationality: 'Tunisien',
+        preferredLanguage: 'fr',
         createdAt: DateTime.now().subtract(const Duration(days: 200)),
       ),
       AppUser(
         id: 'owner_2',
-        fullName: 'Marie Martin',
+        fullName: 'Leila Ben Salah',
         email: 'marie@test.com',
         password: _hashPassword('test123'),
         role: AppConstants.roleOwner,
         isVerified: false,
+        nationality: 'Tunisienne',
+        preferredLanguage: 'ar',
         createdAt: DateTime.now().subtract(const Duration(days: 100)),
       ),
       AppUser(
         id: 'tenant_1',
-        fullName: 'Pierre Durand',
+        fullName: 'Ahmed Trabelsi',
         email: 'locataire@test.com',
         password: _hashPassword('test123'),
         role: AppConstants.roleTenant,
         isVerified: true,
+        nationality: 'Tunisien',
+        isStudent: true,
+        studyField: 'informatique',
+        preferredLanguage: 'fr',
         createdAt: DateTime.now().subtract(const Duration(days: 150)),
       ),
       AppUser(
         id: 'tenant_2',
-        fullName: 'Sophie Leblanc',
+        fullName: 'Fatma Khelifa',
         email: 'sophie@test.com',
         password: _hashPassword('test123'),
         role: AppConstants.roleTenant,
         isVerified: false,
+        nationality: 'Tunisienne',
+        isStudent: true,
+        studyField: 'médecine',
+        preferredLanguage: 'fr',
         createdAt: DateTime.now().subtract(const Duration(days: 60)),
+      ),
+      AppUser(
+        id: 'tenant_3',
+        fullName: 'Ibrahim Koné',
+        email: 'ibrahim@test.com',
+        password: _hashPassword('test123'),
+        role: AppConstants.roleTenant,
+        isVerified: true,
+        nationality: 'Sénégalais',
+        isStudent: true,
+        studyField: 'ingénierie',
+        preferredLanguage: 'fr',
+        createdAt: DateTime.now().subtract(const Duration(days: 45)),
+      ),
+      AppUser(
+        id: 'tenant_4',
+        fullName: 'Marie Nguyen',
+        email: 'nguyen@test.com',
+        password: _hashPassword('test123'),
+        role: AppConstants.roleTenant,
+        isVerified: false,
+        nationality: 'Française',
+        isStudent: false,
+        preferredLanguage: 'fr',
+        createdAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
     ];
     final encoded = users.map((u) => jsonEncode(u.toJson())).toList();
     await _storage.setStringList(_usersKey, encoded);
   }
-
   List<AppUser> _getUsers() {
     final list = _storage.getStringList(_usersKey) ?? [];
     return list

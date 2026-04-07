@@ -3,7 +3,7 @@ class Listing {
   final String ownerId;
   final String title;
   final String description;
-  final String type; // 'apartment','house','studio','room','colocation'
+  final String type;
   final String city;
   final String address;
   final String postalCode;
@@ -17,9 +17,16 @@ class Listing {
   final List<String> amenities;
   final bool isAvailable;
   final DateTime? availableFrom;
-  final String status; // 'active','draft','archived'
+  final String status;
   final int views;
   final DateTime createdAt;
+  final List<String> nearbyUniversities;
+  final int leaseDurationMin;
+  final int leaseDurationMax;
+  final double reviewScore;
+  final int reviewCount;
+  final String fraudRisk;
+  final List<String> targetAudience;
 
   Listing({
     required this.id,
@@ -43,6 +50,13 @@ class Listing {
     required this.status,
     this.views = 0,
     required this.createdAt,
+    this.nearbyUniversities = const [],
+    this.leaseDurationMin = 1,
+    this.leaseDurationMax = 12,
+    this.reviewScore = 0.0,
+    this.reviewCount = 0,
+    this.fraudRisk = 'low',
+    this.targetAudience = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -67,6 +81,13 @@ class Listing {
         'status': status,
         'views': views,
         'createdAt': createdAt.toIso8601String(),
+        'nearbyUniversities': nearbyUniversities,
+        'leaseDurationMin': leaseDurationMin,
+        'leaseDurationMax': leaseDurationMax,
+        'reviewScore': reviewScore,
+        'reviewCount': reviewCount,
+        'fraudRisk': fraudRisk,
+        'targetAudience': targetAudience,
       };
 
   factory Listing.fromJson(Map<String, dynamic> json) => Listing(
@@ -93,6 +114,17 @@ class Listing {
         status: json['status'] as String,
         views: json['views'] as int? ?? 0,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        nearbyUniversities: json['nearbyUniversities'] != null
+            ? List<String>.from(json['nearbyUniversities'] as List)
+            : [],
+        leaseDurationMin: json['leaseDurationMin'] as int? ?? 1,
+        leaseDurationMax: json['leaseDurationMax'] as int? ?? 12,
+        reviewScore: (json['reviewScore'] as num?)?.toDouble() ?? 0.0,
+        reviewCount: json['reviewCount'] as int? ?? 0,
+        fraudRisk: json['fraudRisk'] as String? ?? 'low',
+        targetAudience: json['targetAudience'] != null
+            ? List<String>.from(json['targetAudience'] as List)
+            : [],
       );
 
   Listing copyWith({
@@ -117,6 +149,13 @@ class Listing {
     String? status,
     int? views,
     DateTime? createdAt,
+    List<String>? nearbyUniversities,
+    int? leaseDurationMin,
+    int? leaseDurationMax,
+    double? reviewScore,
+    int? reviewCount,
+    String? fraudRisk,
+    List<String>? targetAudience,
   }) =>
       Listing(
         id: id ?? this.id,
@@ -140,6 +179,13 @@ class Listing {
         status: status ?? this.status,
         views: views ?? this.views,
         createdAt: createdAt ?? this.createdAt,
+        nearbyUniversities: nearbyUniversities ?? this.nearbyUniversities,
+        leaseDurationMin: leaseDurationMin ?? this.leaseDurationMin,
+        leaseDurationMax: leaseDurationMax ?? this.leaseDurationMax,
+        reviewScore: reviewScore ?? this.reviewScore,
+        reviewCount: reviewCount ?? this.reviewCount,
+        fraudRisk: fraudRisk ?? this.fraudRisk,
+        targetAudience: targetAudience ?? this.targetAudience,
       );
 
   String get typeLabel {

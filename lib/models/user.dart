@@ -3,10 +3,14 @@ class AppUser {
   final String fullName;
   final String email;
   final String password;
-  final String role; // 'tenant', 'owner', 'admin'
+  final String role;
   final bool isVerified;
   final String? avatarUrl;
   final DateTime createdAt;
+  final bool isStudent;
+  final String? studyField;
+  final String? nationality;
+  final String preferredLanguage;
 
   AppUser({
     required this.id,
@@ -17,6 +21,10 @@ class AppUser {
     this.isVerified = false,
     this.avatarUrl,
     required this.createdAt,
+    this.isStudent = false,
+    this.studyField,
+    this.nationality,
+    this.preferredLanguage = 'fr',
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +36,10 @@ class AppUser {
         'isVerified': isVerified,
         'avatarUrl': avatarUrl,
         'createdAt': createdAt.toIso8601String(),
+        'isStudent': isStudent,
+        'studyField': studyField,
+        'nationality': nationality,
+        'preferredLanguage': preferredLanguage,
       };
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
@@ -39,6 +51,10 @@ class AppUser {
         isVerified: json['isVerified'] as bool? ?? false,
         avatarUrl: json['avatarUrl'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        isStudent: json['isStudent'] as bool? ?? false,
+        studyField: json['studyField'] as String?,
+        nationality: json['nationality'] as String?,
+        preferredLanguage: json['preferredLanguage'] as String? ?? 'fr',
       );
 
   AppUser copyWith({
@@ -50,6 +66,10 @@ class AppUser {
     bool? isVerified,
     String? avatarUrl,
     DateTime? createdAt,
+    bool? isStudent,
+    String? studyField,
+    String? nationality,
+    String? preferredLanguage,
   }) =>
       AppUser(
         id: id ?? this.id,
@@ -60,6 +80,10 @@ class AppUser {
         isVerified: isVerified ?? this.isVerified,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         createdAt: createdAt ?? this.createdAt,
+        isStudent: isStudent ?? this.isStudent,
+        studyField: studyField ?? this.studyField,
+        nationality: nationality ?? this.nationality,
+        preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       );
 
   String get initials {
