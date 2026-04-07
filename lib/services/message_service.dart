@@ -80,7 +80,7 @@ class MessageService {
         conversationId: conv2Id,
         senderId: 'tenant_2',
         receiverId: 'owner_2',
-        content: 'Bonjour, je souhaiterais visiter votre maison à Marseille.',
+        content: 'Bonjour, je souhaiterais visiter votre appartement à Sousse.',
         sentAt: now.subtract(const Duration(days: 1, hours: 3)),
         isRead: true,
       ),
