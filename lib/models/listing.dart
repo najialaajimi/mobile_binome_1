@@ -27,6 +27,7 @@ class Listing {
   final int reviewCount;
   final String fraudRisk;
   final List<String> targetAudience;
+  final List<String> photos360;
 
   Listing({
     required this.id,
@@ -57,6 +58,7 @@ class Listing {
     this.reviewCount = 0,
     this.fraudRisk = 'low',
     this.targetAudience = const [],
+    this.photos360 = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -88,6 +90,7 @@ class Listing {
         'reviewCount': reviewCount,
         'fraudRisk': fraudRisk,
         'targetAudience': targetAudience,
+        'photos360': photos360,
       };
 
   factory Listing.fromJson(Map<String, dynamic> json) => Listing(
@@ -125,6 +128,9 @@ class Listing {
         targetAudience: json['targetAudience'] != null
             ? List<String>.from(json['targetAudience'] as List)
             : [],
+        photos360: json['photos360'] != null
+            ? List<String>.from(json['photos360'] as List)
+            : [],
       );
 
   Listing copyWith({
@@ -156,6 +162,7 @@ class Listing {
     int? reviewCount,
     String? fraudRisk,
     List<String>? targetAudience,
+    List<String>? photos360,
   }) =>
       Listing(
         id: id ?? this.id,
@@ -186,6 +193,7 @@ class Listing {
         reviewCount: reviewCount ?? this.reviewCount,
         fraudRisk: fraudRisk ?? this.fraudRisk,
         targetAudience: targetAudience ?? this.targetAudience,
+        photos360: photos360 ?? this.photos360,
       );
 
   String get typeLabel {

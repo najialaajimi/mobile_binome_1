@@ -94,12 +94,56 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     colors: [_cardColor, _cardColor.withAlpha(180)],
                   ),
                 ),
-                child: Center(
-                  child: Icon(
-                    AppConstants.propertyTypeIcons[l.type] ?? Icons.home,
-                    size: 80,
-                    color: Colors.white.withAlpha(180),
-                  ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      AppConstants.propertyTypeIcons[l.type] ?? Icons.home,
+                      size: 80,
+                      color: Colors.white.withAlpha(180),
+                    ),
+                    // 360° tour badge — shown only when photos360 exist
+                    if (l.photos360.isNotEmpty)
+                      Positioned(
+                        bottom: 16,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.virtualTour,
+                            arguments: {
+                              'photos360': l.photos360,
+                              'listingTitle': l.title,
+                            },
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withAlpha(160),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                  color: Colors.white.withAlpha(100)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.threed_rotation,
+                                    color: Colors.white, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  '🌐 Visite Virtuelle 360°',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -327,6 +371,129 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                           .toList(),
                     ),
                   ],
+                  // ── Photo gallery with IA authenticity ───────────────────
+                  if (l.photos.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Text(
+                          'Photos',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.photoAnalysis,
+                            arguments: {'photos': l.photos},
+                          ),
+                          icon: const Icon(Icons.verified_outlined, size: 14),
+                          label: const Text('Vérifier authenticité IA',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 90,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: l.photos.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: 10),
+                        itemBuilder: (ctx, i) {
+                          return Container(
+                            width: 110,
+                            decoration: BoxDecoration(
+                              color: _cardColor.withAlpha(30),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: _cardColor.withAlpha(80)),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Icon(Icons.photo_outlined,
+                                    size: 30, color: Colors.white70),
+                                Positioned(
+                                  bottom: 4,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Text(
+                                      'Photo ${i + 1}',
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  // ── 360° virtual tour button ──────────────────────────
+                  if (l.photos360.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.virtualTour,
+                        arguments: {
+                          'photos360': l.photos360,
+                          'listingTitle': l.title,
+                        },
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1565C0), Color(0xFF003c8f)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.threed_rotation,
+                                color: Colors.white, size: 22),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '🌐 Visite Virtuelle 360°',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14),
+                                ),
+                                Text(
+                                  '${l.photos360.length} pièce(s) disponible(s)',
+                                  style: TextStyle(
+                                      color: Colors.white.withAlpha(200),
+                                      fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios,
+                                color: Colors.white70, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+
                   if (l.nearbyUniversities.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     const Text(

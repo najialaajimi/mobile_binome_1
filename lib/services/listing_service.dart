@@ -4,7 +4,7 @@ import 'storage_service.dart';
 
 class ListingService {
   static const _listingsKey = 'listings';
-  static const _seededKey = 'listings_seeded_v2';
+  static const _seededKey = 'listings_seeded_v3';
 
   final StorageService _storage = StorageService.instance;
 
@@ -47,6 +47,10 @@ class ListingService {
         reviewScore: 4.5,
         reviewCount: 2,
         fraudRisk: 'low',
+        photos360: [
+          'https://exemple.com/visite360/ariana-studio-salon.jpg',
+          'https://exemple.com/visite360/ariana-studio-chambre.jpg',
+        ],
       ),
       Listing(
         id: 'listing_2',
@@ -77,6 +81,11 @@ class ListingService {
         reviewScore: 4.0,
         reviewCount: 1,
         fraudRisk: 'low',
+        photos360: [
+          'https://exemple.com/visite360/tunis-lac-sejour.jpg',
+          'https://exemple.com/visite360/tunis-lac-chambre.jpg',
+          'https://exemple.com/visite360/tunis-lac-cuisine.jpg',
+        ],
       ),
       Listing(
         id: 'listing_3',

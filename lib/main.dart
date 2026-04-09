@@ -31,6 +31,9 @@ import 'screens/tenant/preferences_screen.dart';
 import 'screens/tenant/roommate_finder_screen.dart';
 import 'screens/tenant/listing_reviews_screen.dart';
 import 'screens/owner/price_suggestion_screen.dart';
+import 'screens/owner/photo_analysis_screen.dart';
+import 'screens/owner/text_fraud_analysis_screen.dart';
+import 'screens/tenant/virtual_tour_screen.dart';
 import 'screens/messaging/conversations_screen.dart';
 import 'screens/messaging/chat_screen.dart';
 
@@ -161,6 +164,27 @@ class LogementApp extends StatelessWidget {
 
       case AppRoutes.priceSuggestion:
         return _route(const PriceSuggestionScreen());
+
+      case AppRoutes.photoAnalysis:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final photos =
+            (args?['photos'] as List?)?.cast<String>() ?? <String>[];
+        return _route(PhotoAnalysisScreen(photos: photos));
+
+      case AppRoutes.textFraudAnalysis:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final title = args?['title'] as String? ?? '';
+        final description = args?['description'] as String? ?? '';
+        return _route(TextFraudAnalysisScreen(
+            title: title, description: description));
+
+      case AppRoutes.virtualTour:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final photos360 =
+            (args?['photos360'] as List?)?.cast<String>() ?? <String>[];
+        final listingTitle = args?['listingTitle'] as String? ?? 'Logement';
+        return _route(VirtualTourScreen(
+            listingTitle: listingTitle, photos360: photos360));
 
       default:
         return _route(const SplashScreen());

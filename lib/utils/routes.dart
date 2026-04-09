@@ -33,4 +33,7 @@ class AppRoutes {
   static const roommateFinder = '/tenant/roommate-finder';
   static const listingReviews = '/listing/reviews';
   static const priceSuggestion = '/owner/price-suggestion';
+  static const photoAnalysis = '/owner/photo-analysis';
+  static const textFraudAnalysis = '/owner/text-fraud-analysis';
+  static const virtualTour = '/listing/virtual-tour';
 }

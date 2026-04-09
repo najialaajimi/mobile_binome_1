@@ -1,10 +1,105 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/material.dart' show Color;
 import '../models/listing.dart';
 import '../models/user_preferences.dart';
 import 'storage_service.dart';
 import 'auth_service.dart';
 import 'listing_service.dart';
+
+// ─────────────────────────────────────────────
+// Result types for AI analyses
+// ─────────────────────────────────────────────
+
+class PhotoAuthenticityResult {
+  /// 'authentic', 'suspicious', 'high_risk'
+  final String verdict;
+  final int riskScore; // 0-100
+  final List<String> signals;
+  final List<String> recommendations;
+
+  const PhotoAuthenticityResult({
+    required this.verdict,
+    required this.riskScore,
+    required this.signals,
+    required this.recommendations,
+  });
+
+  Color get verdictColor {
+    switch (verdict) {
+      case 'authentic':
+        return const Color(0xFF388E3C);
+      case 'suspicious':
+        return const Color(0xFFFFA000);
+      default:
+        return const Color(0xFFD32F2F);
+    }
+  }
+
+  String get verdictLabel {
+    switch (verdict) {
+      case 'authentic':
+        return 'Photo authentique';
+      case 'suspicious':
+        return 'Photo suspecte';
+      default:
+        return 'Risque élevé (GAN probable)';
+    }
+  }
+
+  String get verdictIcon {
+    switch (verdict) {
+      case 'authentic':
+        return '✅';
+      case 'suspicious':
+        return '⚠️';
+      default:
+        return '🚫';
+    }
+  }
+}
+
+class PhotoQualityResult {
+  final int qualityScore; // 0-100
+  final List<String> issues;
+  final List<String> tips;
+
+  const PhotoQualityResult({
+    required this.qualityScore,
+    required this.issues,
+    required this.tips,
+  });
+}
+
+class TextFraudAnalysis {
+  final int overallScore; // 0-100 (higher = more suspicious)
+  final String riskLevel; // 'low', 'medium', 'high'
+  final List<_TextSignal> signals;
+
+  const TextFraudAnalysis({
+    required this.overallScore,
+    required this.riskLevel,
+    required this.signals,
+  });
+}
+
+class _TextSignal {
+  final String category;
+  final String description;
+  final int weight; // contribution to score
+  final bool isPositive; // true = good signal, false = bad signal
+
+  const _TextSignal({
+    required this.category,
+    required this.description,
+    required this.weight,
+    required this.isPositive,
+  });
+}
+
+// ─────────────────────────────────────────────
+// AiService
+// ─────────────────────────────────────────────
 
 class AiService {
   static const _prefsKey = 'user_preferences_';
@@ -13,6 +108,8 @@ class AiService {
   final StorageService _storage = StorageService.instance;
   final ListingService _listingService = ListingService();
   final AuthService _authService = AuthService();
+
+  // ── Preferences ────────────────────────────
 
   UserPreferences? getUserPreferences(String userId) {
     final raw = _storage.getString('$_prefsKey$userId');
@@ -29,6 +126,8 @@ class AiService {
         '$_prefsKey${prefs.userId}', jsonEncode(prefs.toJson()));
   }
 
+  // ── View history ───────────────────────────
+
   List<String> getViewHistory(String userId) {
     return _storage.getStringList('$_historyKey$userId') ?? [];
   }
@@ -41,6 +140,8 @@ class AiService {
       await _storage.setStringList('$_historyKey$userId', history);
     }
   }
+
+  // ── Compatibility score ────────────────────
 
   int getCompatibilityScore(UserPreferences prefs, Listing listing) {
     int score = 50;
@@ -109,6 +210,8 @@ class AiService {
     return score.clamp(0, 100);
   }
 
+  // ── Smart recommendations ──────────────────
+
   List<Listing> getRecommendations(String userId, {int limit = 10}) {
     final prefs = getUserPreferences(userId);
     final history = getViewHistory(userId);
@@ -138,6 +241,8 @@ class AiService {
     scored.sort((a, b) => b.value.compareTo(a.value));
     return scored.take(limit).map((e) => e.key).toList();
   }
+
+  // ── Price suggestion ───────────────────────
 
   Map<String, dynamic> suggestPrice({
     required String city,
@@ -220,10 +325,16 @@ class AiService {
     }
   }
 
-  Map<String, dynamic> detectFraud(Listing listing) {
-    final reasons = <String>[];
-    int riskScore = 0;
+  // ── Legacy detectFraud (used in create listing) ──
 
+  Map<String, dynamic> detectFraud(Listing listing) {
+    final analysis = analyzeTextFraud(listing.title, listing.description);
+    final reasons = analysis.signals
+        .where((s) => !s.isPositive)
+        .map((s) => s.description)
+        .toList();
+
+    // Price check
     final priceEstimate = suggestPrice(
       city: listing.city,
       type: listing.type,
@@ -232,78 +343,408 @@ class AiService {
       isFurnished: listing.isFurnished,
     );
     final suggested = priceEstimate['suggested'] as double;
-
     if (listing.price < suggested * 0.4) {
-      riskScore += 40;
-      reasons.add(
+      reasons.insert(0,
           'Prix anormalement bas (${listing.price.toInt()} TND vs ~${suggested.toInt()} TND estimé)');
     } else if (listing.price < suggested * 0.6) {
-      riskScore += 20;
-      reasons.add('Prix en dessous du marché');
+      reasons.insert(0, 'Prix en dessous du marché');
     }
 
-    final suspiciousKeywords = [
-      'urgent',
-      'partez à l\'étranger',
-      'clés par courrier',
-      'western union',
-      'money gram',
-      'moneygram',
-      'transfert',
-      'avance immédiate',
-      'pas de visite',
-      'sans visite',
-      'confiance totale',
-      'victime d\'arnaque',
-      'pasteur',
-      'missionnaire',
-    ];
-
-    final text = '${listing.title} ${listing.description}'.toLowerCase();
-    for (final kw in suspiciousKeywords) {
-      if (text.contains(kw)) {
-        riskScore += 25;
-        reasons.add('Expression suspecte détectée : "$kw"');
-        break;
-      }
-    }
-
-    if (listing.description.trim().length < 30) {
-      riskScore += 15;
-      reasons.add('Description trop courte');
-    }
-
+    // Photos check
     if (listing.photos.isEmpty) {
-      riskScore += 10;
       reasons.add('Aucune photo fournie');
     }
 
-    if (listing.surface < 5 || listing.surface > 1000) {
-      riskScore += 20;
-      reasons.add(
-          'Surface inhabituellement ${listing.surface < 5 ? "petite" : "grande"}');
+    return {
+      'risk': analysis.riskLevel,
+      'score': analysis.overallScore,
+      'reasons': reasons,
+    };
+  }
+
+  // ── Detailed text fraud analysis ─────────────────────────────────────────
+
+  /// Analyzes listing title + description for fraud indicators.
+  /// Returns a structured [TextFraudAnalysis] with per-signal breakdown.
+  TextFraudAnalysis analyzeTextFraud(String title, String description) {
+    final signals = <_TextSignal>[];
+    final text = '$title $description';
+    final textLower = text.toLowerCase();
+
+    // 1. Suspicious payment/scam keywords
+    const scamKeywords = [
+      'western union',
+      'moneygram',
+      'money gram',
+      'transfert bancaire',
+      'virement immédiat',
+      'clés par courrier',
+      'clef par courrier',
+      'pasteur',
+      'missionnaire',
+      'victime',
+      'arnaque précédente',
+      'partez à l\'étranger',
+      'je suis à l\'étranger',
+      'en déplacement',
+      'pas de visite possible',
+      'sans visite',
+    ];
+    final foundScam =
+        scamKeywords.where((kw) => textLower.contains(kw)).toList();
+    if (foundScam.isNotEmpty) {
+      signals.add(_TextSignal(
+        category: 'Mots-clés d\'arnaque',
+        description:
+            'Expressions suspectes détectées : ${foundScam.take(3).map((k) => '"$k"').join(', ')}',
+        weight: 35,
+        isPositive: false,
+      ));
     }
 
-    if (listing.title.trim().length < 10) {
-      riskScore += 10;
-      reasons.add('Titre trop court');
+    // 2. Urgency/pressure language
+    const urgencyKeywords = [
+      'urgent',
+      'urgente',
+      'immédiatement',
+      'immédiat',
+      'rapidement',
+      'vite',
+      'offre limitée',
+      'dernière chance',
+      'ne ratez pas',
+    ];
+    final foundUrgency =
+        urgencyKeywords.where((kw) => textLower.contains(kw)).toList();
+    if (foundUrgency.isNotEmpty) {
+      signals.add(_TextSignal(
+        category: 'Langage d\'urgence',
+        description:
+            'Pression psychologique détectée : ${foundUrgency.take(2).map((k) => '"$k"').join(', ')}',
+        weight: 20,
+        isPositive: false,
+      ));
     }
+
+    // 3. Contact info in description (phone / email)
+    final phonePattern = RegExp(r'(\+?[\d\s\-\(\)]{8,})', multiLine: true);
+    final emailPattern =
+        RegExp(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}');
+    final hasPhone = phonePattern.hasMatch(description);
+    final hasEmail = emailPattern.hasMatch(description);
+    if (hasPhone || hasEmail) {
+      signals.add(_TextSignal(
+        category: 'Coordonnées dans la description',
+        description:
+            'Coordonnées personnelles détectées (${[if (hasPhone) 'téléphone', if (hasEmail) 'email'].join(', ')}). Communiquez via la messagerie de la plateforme.',
+        weight: 25,
+        isPositive: false,
+      ));
+    }
+
+    // 4. Excessive uppercase (shouting / spam)
+    final upperCount =
+        text.runes.where((r) => r >= 65 && r <= 90).length; // A-Z
+    final totalLetters =
+        text.runes.where((r) => (r >= 65 && r <= 90) || (r >= 97 && r <= 122))
+            .length;
+    if (totalLetters > 20 && upperCount / totalLetters > 0.4) {
+      signals.add(_TextSignal(
+        category: 'Abus de majuscules',
+        description:
+            'Trop de majuscules (${(upperCount / totalLetters * 100).toInt()}%). Ce style est associé au spam.',
+        weight: 15,
+        isPositive: false,
+      ));
+    }
+
+    // 5. Excessive punctuation
+    final excessivePunctPattern = RegExp(r'[!?]{2,}');
+    if (excessivePunctPattern.hasMatch(text)) {
+      signals.add(_TextSignal(
+        category: 'Ponctuation excessive',
+        description:
+            'Utilisation excessive de "!!" ou "??" — signe de manipulation émotionnelle.',
+        weight: 10,
+        isPositive: false,
+      ));
+    }
+
+    // 6. Description too short
+    if (description.trim().length < 30) {
+      signals.add(_TextSignal(
+        category: 'Description insuffisante',
+        description:
+            'Description trop courte (${description.trim().length} caractères). Une annonce sérieuse décrit le logement en détail.',
+        weight: 15,
+        isPositive: false,
+      ));
+    } else if (description.trim().length > 150) {
+      signals.add(_TextSignal(
+        category: 'Description détaillée',
+        description: 'Description complète et détaillée — bon signe.',
+        weight: 10,
+        isPositive: true,
+      ));
+    }
+
+    // 7. Title too short
+    if (title.trim().length < 10) {
+      signals.add(_TextSignal(
+        category: 'Titre trop court',
+        description: 'Titre insuffisant (${title.trim().length} caractères).',
+        weight: 10,
+        isPositive: false,
+      ));
+    }
+
+    // 8. Positive: mentions location / reference points
+    final locationKeywords = [
+      'métro',
+      'bus',
+      'université',
+      'fac',
+      'campus',
+      'école',
+      'centre-ville',
+      'rue',
+      'avenue',
+      'boulevard',
+      'quartier',
+    ];
+    if (locationKeywords.any((kw) => textLower.contains(kw))) {
+      signals.add(_TextSignal(
+        category: 'Repères géographiques',
+        description: 'L\'annonce mentionne des repères de localisation.',
+        weight: 5,
+        isPositive: true,
+      ));
+    }
+
+    // 9. Positive: price/charges mention
+    if (textLower.contains('charge') ||
+        textLower.contains('tnd') ||
+        textLower.contains('dt') ||
+        textLower.contains('dinar')) {
+      signals.add(_TextSignal(
+        category: 'Transparence sur les charges',
+        description: 'Les charges ou le prix sont mentionnés dans la description.',
+        weight: 5,
+        isPositive: true,
+      ));
+    }
+
+    // Compute score
+    int score = 0;
+    for (final s in signals) {
+      if (!s.isPositive) {
+        score += s.weight;
+      }
+    }
+    score = score.clamp(0, 100);
 
     String riskLevel;
-    if (riskScore >= 40) {
+    if (score >= 40) {
       riskLevel = 'high';
-    } else if (riskScore >= 20) {
+    } else if (score >= 20) {
       riskLevel = 'medium';
     } else {
       riskLevel = 'low';
     }
 
-    return {
-      'risk': riskLevel,
-      'score': riskScore,
-      'reasons': reasons,
-    };
+    return TextFraudAnalysis(
+      overallScore: score,
+      riskLevel: riskLevel,
+      signals: signals,
+    );
   }
+
+  // ── Photo authenticity (GAN detection simulation) ────────────────────────
+
+  /// Simulates GAN/deepfake detection on a photo URL using heuristic rules.
+  /// In a real app this would call an ML model endpoint.
+  PhotoAuthenticityResult analyzePhotoAuthenticity(String photoUrl) {
+    final signals = <String>[];
+    final recommendations = <String>[];
+    int riskScore = 0;
+
+    final urlLower = photoUrl.toLowerCase().trim();
+
+    // 1. Stock photo / placeholder sites
+    const stockSites = [
+      'unsplash.com',
+      'pexels.com',
+      'pixabay.com',
+      'shutterstock.com',
+      'gettyimages.com',
+      'istockphoto.com',
+      'freepik.com',
+      'loremflickr.com',
+      'picsum.photos',
+      'placeholder.com',
+      'placehold.it',
+      'via.placeholder',
+      'dummyimage.com',
+    ];
+    if (stockSites.any((s) => urlLower.contains(s))) {
+      riskScore += 50;
+      signals.add('Photo provenant d\'un site de banque d\'images — risque de photo générique non représentative du bien.');
+      recommendations.add('Prenez des photos originales du logement avec votre propre appareil.');
+    }
+
+    // 2. URL contains common GAN/AI image generator patterns
+    const aiGeneratorPatterns = [
+      'midjourney',
+      'stable-diffusion',
+      'dall-e',
+      'dalle',
+      'generated',
+      'ai-generated',
+      'thispersondoesnotexist',
+      'thisrentaldoesnotexist',
+      'deepai',
+      'craiyon',
+      'nightcafe',
+    ];
+    if (aiGeneratorPatterns.any((p) => urlLower.contains(p))) {
+      riskScore += 70;
+      signals.add('URL associée à un générateur d\'images IA (GAN/Diffusion) — photo probablement générée artificiellement.');
+      recommendations.add('Les photos générées par IA sont interdites. Utilisez uniquement des photos réelles du logement.');
+    }
+
+    // 3. No extension or suspicious extension
+    final hasImageExt = RegExp(r'\.(jpg|jpeg|png|webp|gif|bmp|avif)(\?|$)',
+            caseSensitive: false)
+        .hasMatch(urlLower);
+    if (!hasImageExt) {
+      riskScore += 20;
+      signals.add('Format d\'image non standard ou URL sans extension reconnue.');
+      recommendations.add('Utilisez des photos aux formats standards : JPG, PNG ou WebP.');
+    }
+
+    // 4. URL too short / clearly fake
+    if (photoUrl.trim().length < 15) {
+      riskScore += 30;
+      signals.add('URL trop courte — probable lien invalide ou fictif.');
+      recommendations.add('Vérifiez que le lien pointe vers une vraie photo accessible en ligne.');
+    }
+
+    // 5. URL does not start with http(s)
+    if (!urlLower.startsWith('http://') && !urlLower.startsWith('https://')) {
+      riskScore += 25;
+      signals.add('L\'URL ne commence pas par https:// — lien potentiellement invalide.');
+      recommendations.add('Utilisez uniquement des liens HTTPS sécurisés.');
+    } else if (urlLower.startsWith('http://')) {
+      riskScore += 5;
+      signals.add('Connexion non sécurisée (HTTP). Préférez HTTPS.');
+      recommendations.add('Hébergez vos photos sur un serveur HTTPS.');
+    }
+
+    // 6. Positive: known hosting platforms (trusted)
+    const trustedHosts = [
+      'imgur.com',
+      'cloudinary.com',
+      'res.cloudinary.com',
+      'storage.googleapis.com',
+      'amazonaws.com',
+      's3.amazonaws.com',
+      'firebasestorage.googleapis.com',
+      'cdn.',
+      'images.',
+    ];
+    final isTrusted = trustedHosts.any((h) => urlLower.contains(h));
+    if (isTrusted) {
+      riskScore = (riskScore - 15).clamp(0, 100);
+      signals.add('Photo hébergée sur une plateforme de confiance.');
+    }
+
+    riskScore = riskScore.clamp(0, 100);
+
+    String verdict;
+    if (riskScore >= 50) {
+      verdict = 'high_risk';
+    } else if (riskScore >= 20) {
+      verdict = 'suspicious';
+    } else {
+      verdict = 'authentic';
+    }
+
+    if (signals.isEmpty) {
+      signals.add('Aucun signal suspect détecté dans l\'URL de la photo.');
+    }
+    if (recommendations.isEmpty) {
+      recommendations.add('Continuez à utiliser des photos originales et de bonne qualité.');
+    }
+
+    return PhotoAuthenticityResult(
+      verdict: verdict,
+      riskScore: riskScore,
+      signals: signals,
+      recommendations: recommendations,
+    );
+  }
+
+  /// Returns AI-powered photo quality tips based on URL heuristics.
+  PhotoQualityResult analyzePhotoQuality(String photoUrl) {
+    final issues = <String>[];
+    final tips = <String>[];
+    int qualityScore = 70; // base
+
+    final urlLower = photoUrl.toLowerCase();
+
+    // Check dimensions hints in URL
+    final sizePattern = RegExp(r'(\d+)x(\d+)');
+    final sizeMatch = sizePattern.firstMatch(urlLower);
+    if (sizeMatch != null) {
+      final w = int.tryParse(sizeMatch.group(1) ?? '0') ?? 0;
+      final h = int.tryParse(sizeMatch.group(2) ?? '0') ?? 0;
+      if (w > 0 && h > 0) {
+        if (w < 640 || h < 480) {
+          qualityScore -= 20;
+          issues.add('Résolution faible détectée (${w}x$h px). Minimum recommandé : 1280×960.');
+          tips.add('Utilisez un appareil photo ou smartphone récent (12 MP minimum).');
+        } else if (w >= 1920) {
+          qualityScore += 10;
+          tips.add('Excellente résolution — la photo sera bien affichée sur tous les écrans.');
+        }
+      }
+    }
+
+    // Thumbnail patterns
+    if (urlLower.contains('thumb') ||
+        urlLower.contains('small') ||
+        urlLower.contains('tiny') ||
+        urlLower.contains('_sm') ||
+        urlLower.contains('-sm')) {
+      qualityScore -= 15;
+      issues.add('La photo semble être une miniature (thumbnail) de faible résolution.');
+      tips.add('Uploadez la version haute résolution de vos photos.');
+    }
+
+    // WebP / modern formats → good
+    if (urlLower.contains('.webp') || urlLower.contains('.avif')) {
+      qualityScore += 5;
+      tips.add('Format WebP/AVIF optimisé — bonne performance de chargement.');
+    }
+
+    // General tips always provided
+    tips.addAll([
+      'Photographiez en lumière naturelle (journée, fenêtres ouvertes).',
+      'Prenez des photos de toutes les pièces : salon, chambre(s), cuisine, salle de bain.',
+      'Rangez et nettoyez le logement avant de photographier.',
+      'Utilisez le mode paysage (horizontal) pour les grandes pièces.',
+    ]);
+
+    qualityScore = qualityScore.clamp(0, 100);
+
+    return PhotoQualityResult(
+      qualityScore: qualityScore,
+      issues: issues,
+      tips: tips,
+    );
+  }
+
+  // ── Roommate finder ────────────────────────
 
   List<Map<String, dynamic>> findCompatibleRoommates(String userId) {
     final allUsers = _authService.getAllUsers();

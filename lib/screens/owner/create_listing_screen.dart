@@ -49,6 +49,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
   final _amenityCtrl = TextEditingController();
   final List<String> _photos = [];
   final _photoCtrl = TextEditingController();
+  final List<String> _photos360 = [];
+  final _photo360Ctrl = TextEditingController();
 
   @override
   void dispose() {
@@ -61,6 +63,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
     _descCtrl.dispose();
     _amenityCtrl.dispose();
     _photoCtrl.dispose();
+    _photo360Ctrl.dispose();
     super.dispose();
   }
 
@@ -106,6 +109,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
       status: 'active',
       views: 0,
       createdAt: DateTime.now(),
+      photos360: _photos360,
     );
     await _listingService.createListing(listing);
     setState(() => _isLoading = false);
@@ -416,13 +420,35 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => _runFraudCheck(),
-          icon: const Icon(Icons.security_outlined),
-          label: const Text('Vérification IA anti-arnaque'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primary,
-          ),
+        // Fraud check buttons row
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _runFraudCheck(),
+              icon: const Icon(Icons.security_outlined),
+              label: const Text('Vérification IA anti-arnaque'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.textFraudAnalysis,
+                arguments: {
+                  'title': _titleCtrl.text,
+                  'description': _descCtrl.text,
+                },
+              ),
+              icon: const Icon(Icons.analytics_outlined),
+              label: const Text('Analyse textuelle détaillée'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.secondary,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         const Text('Équipements',
@@ -462,10 +488,49 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               .toList(),
         ),
         const SizedBox(height: 20),
-        const Text('Photos (URLs)',
-            style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
+        // ── Photos section ───────────────────────────────────────────
+        Row(
+          children: [
+            const Text('Photos (URLs)',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const Spacer(),
+            if (_photos.isNotEmpty)
+              TextButton.icon(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.photoAnalysis,
+                  arguments: {'photos': List<String>.from(_photos)},
+                ),
+                icon: const Icon(Icons.search, size: 14),
+                label: const Text('Analyser toutes (IA)',
+                    style: TextStyle(fontSize: 12)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withAlpha(10),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.tips_and_updates_outlined,
+                  size: 14, color: AppColors.primary),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'L\'IA vérifie l\'authenticité de chaque photo (détection GAN, images de stock, qualité).',
+                  style: TextStyle(
+                      fontSize: 11, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -491,14 +556,100 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               title: Text(p,
                   style: const TextStyle(fontSize: 12),
                   overflow: TextOverflow.ellipsis),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.search,
+                        size: 16, color: AppColors.primary),
+                    tooltip: 'Analyser cette photo (GAN)',
+                    onPressed: () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.photoAnalysis,
+                      arguments: {
+                        'photos': [p]
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => setState(() => _photos.remove(p)),
+                  ),
+                ],
+              ),
+            ))),
+        const SizedBox(height: 24),
+        // ── 360° Photos section ──────────────────────────────────────
+        Row(
+          children: [
+            const Icon(Icons.threed_rotation,
+                size: 18, color: AppColors.primary),
+            const SizedBox(width: 6),
+            const Text('Photos 360° (Visite virtuelle)',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.secondary.withAlpha(15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.panorama_outlined,
+                  size: 14, color: AppColors.secondary),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Ajoutez des URLs de photos panoramiques 360° pour proposer une visite virtuelle immersive.',
+                  style: TextStyle(
+                      fontSize: 11, color: AppColors.secondary),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _photo360Ctrl,
+                decoration: const InputDecoration(
+                  labelText: 'URL photo 360°',
+                  hintText: 'https://... (panoramique)',
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            IconButton(
+              icon: const Icon(Icons.add_circle,
+                  color: AppColors.secondary),
+              onPressed: _addPhoto360,
+            ),
+          ],
+        ),
+        ...(_photos360.map((p) => ListTile(
+              dense: true,
+              leading: const Icon(Icons.panorama_outlined,
+                  color: AppColors.secondary),
+              title: Text(p,
+                  style: const TextStyle(fontSize: 12),
+                  overflow: TextOverflow.ellipsis),
               trailing: IconButton(
                 icon: const Icon(Icons.close, size: 16),
-                onPressed: () => setState(() => _photos.remove(p)),
+                onPressed: () =>
+                    setState(() => _photos360.remove(p)),
               ),
             ))),
       ],
     );
   }
+
 
   void _addAmenity() {
     if (_amenityCtrl.text.trim().isNotEmpty) {
@@ -584,6 +735,15 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
       setState(() {
         _photos.add(_photoCtrl.text.trim());
         _photoCtrl.clear();
+      });
+    }
+  }
+
+  void _addPhoto360() {
+    if (_photo360Ctrl.text.trim().isNotEmpty) {
+      setState(() {
+        _photos360.add(_photo360Ctrl.text.trim());
+        _photo360Ctrl.clear();
       });
     }
   }
