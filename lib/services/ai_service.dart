@@ -251,6 +251,9 @@ class AiService {
     required int rooms,
     required bool isFurnished,
   }) {
+    // Keys are lowercase for matching against `cityLower` (user input normalized
+    // via .toLowerCase().trim()). The bidirectional contains() check handles
+    // variants like "Tunis", "TUNIS", "Lac de Tunis", "La Marsa", etc.
     final Map<String, double> cityBasePricePerM2 = {
       'tunis': 12.0,
       'la marsa': 14.0,
@@ -369,13 +372,14 @@ class AiService {
   TextFraudAnalysis analyzeTextFraud(String title, String description) {
     final signals = <_TextSignal>[];
     final text = '$title $description';
-    final textLower = text.toLowerCase();
+    // Normalize spaces so 'money gram' and 'moneygram' both match 'moneygram'
+    final textLower = text.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    final textNormalized = textLower.replaceAll(' ', '');
 
     // 1. Suspicious payment/scam keywords
     const scamKeywords = [
       'western union',
       'moneygram',
-      'money gram',
       'transfert bancaire',
       'virement immédiat',
       'clés par courrier',
@@ -390,8 +394,12 @@ class AiService {
       'pas de visite possible',
       'sans visite',
     ];
-    final foundScam =
-        scamKeywords.where((kw) => textLower.contains(kw)).toList();
+    // Check against both normalized and regular text to catch spaced variants
+    final foundScam = scamKeywords
+        .where((kw) =>
+            textLower.contains(kw) ||
+            textNormalized.contains(kw.replaceAll(' ', '')))
+        .toList();
     if (foundScam.isNotEmpty) {
       signals.add(_TextSignal(
         category: 'Mots-clés d\'arnaque',
