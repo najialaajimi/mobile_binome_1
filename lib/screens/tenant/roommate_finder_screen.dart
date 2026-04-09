@@ -165,8 +165,31 @@ class _RoommateFinderScreenState extends State<RoommateFinderScreen> {
                             _infoChip(
                                 _langLabel(prefs.preferredLanguage),
                                 AppColors.primary),
+                            _infoChip(_scheduleLabel(prefs.schedule),
+                                AppColors.secondary),
+                            _infoChip(
+                                '🧹 ${prefs.cleanlinessLevel}/5',
+                                AppColors.textSecondary),
+                            if (prefs.smokingAllowed)
+                              _infoChip('🚬 Fumeur', AppColors.error),
+                            if (prefs.petsAllowed)
+                              _infoChip('🐾 Animaux', AppColors.secondary),
+                            ...prefs.hobbies.take(3).map((h) =>
+                                _infoChip('🎯 $h', AppColors.primary)),
                           ],
                         ),
+                        if (prefs.bio.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '"${prefs.bio}"',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
@@ -213,6 +236,19 @@ class _RoommateFinderScreenState extends State<RoommateFinderScreen> {
         return '🎉 Animé';
       default:
         return '🙂 Flexible';
+    }
+  }
+
+  String _scheduleLabel(String v) {
+    switch (v) {
+      case 'morning':
+        return '☀️ Lève-tôt';
+      case 'evening':
+        return '🌙 Soir';
+      case 'night':
+        return '🦉 Noctambule';
+      default:
+        return '⏱️ Flexible';
     }
   }
 

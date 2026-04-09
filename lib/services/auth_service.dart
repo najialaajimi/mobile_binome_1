@@ -187,6 +187,14 @@ class AuthService {
     return true;
   }
 
+  Future<bool> updatePassword(String currentPassword, String newPassword) async {
+    final user = getCurrentUser();
+    if (user == null) return false;
+    if (_hashPassword(currentPassword) != user.password) return false;
+    final updated = user.copyWith(password: _hashPassword(newPassword));
+    return updateUser(updated);
+  }
+
   List<AppUser> getAllUsers() => _getUsers();
 
   Future<bool> deleteUser(String userId) async {

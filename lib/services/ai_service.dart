@@ -770,8 +770,9 @@ class AiService {
       if (theirPrefs == null) continue;
       if (!theirPrefs.preferredTypes.contains('colocation')) continue;
 
-      int compatScore = 50;
+      int compatScore = 40; // base
 
+      // Lifestyle (20 pts)
       if (myPrefs != null && theirPrefs.lifestyle == myPrefs.lifestyle) {
         compatScore += 20;
       } else if (myPrefs?.lifestyle == 'any' ||
@@ -779,6 +780,7 @@ class AiService {
         compatScore += 10;
       }
 
+      // Budget overlap (15 pts)
       if (myPrefs != null &&
           myPrefs.budgetMax != null &&
           theirPrefs.budgetMax != null) {
@@ -789,6 +791,7 @@ class AiService {
         if (overlapEnd > overlapStart) compatScore += 15;
       }
 
+      // Language (10 pts)
       if (myPrefs != null &&
           (theirPrefs.preferredLanguage == myPrefs.preferredLanguage ||
               theirPrefs.preferredLanguage == 'any' ||
@@ -796,16 +799,55 @@ class AiService {
         compatScore += 10;
       }
 
+      // Study field (5 pts)
       if (user.studyField != null &&
           currentUser.studyField != null &&
           user.studyField == currentUser.studyField) {
         compatScore += 5;
       }
 
+      // Nationality (5 pts)
       if (user.nationality != null &&
           currentUser.nationality != null &&
           user.nationality == currentUser.nationality) {
         compatScore += 5;
+      }
+
+      // New: Schedule compatibility (10 pts)
+      if (myPrefs != null) {
+        if (theirPrefs.schedule == myPrefs.schedule ||
+            theirPrefs.schedule == 'flexible' ||
+            myPrefs.schedule == 'flexible') {
+          compatScore += 10;
+        }
+      }
+
+      // New: Cleanliness level (10 pts) — ≤1 level apart is compatible
+      if (myPrefs != null) {
+        final diff = (theirPrefs.cleanlinessLevel - myPrefs.cleanlinessLevel).abs();
+        if (diff == 0) {
+          compatScore += 10;
+        } else if (diff == 1) {
+          compatScore += 5;
+        }
+      }
+
+      // New: Smoking/pets compatibility (penalty)
+      if (myPrefs != null) {
+        if (!theirPrefs.smokingAllowed && myPrefs.smokingAllowed) {
+          compatScore -= 15;
+        }
+        if (!theirPrefs.petsAllowed && myPrefs.petsAllowed) {
+          compatScore -= 10;
+        }
+      }
+
+      // New: Shared hobbies (up to 10 pts)
+      if (myPrefs != null && myPrefs.hobbies.isNotEmpty) {
+        final sharedHobbies = myPrefs.hobbies
+            .where((h) => theirPrefs.hobbies.contains(h))
+            .length;
+        compatScore += min(sharedHobbies * 3, 10);
       }
 
       compatScore = compatScore.clamp(0, 100);

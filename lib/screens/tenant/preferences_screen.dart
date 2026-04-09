@@ -27,6 +27,13 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   int _leaseDuration = 6;
   bool? _wantFurnished;
   int _minRooms = 1;
+  // New IA roommate-matching fields
+  String _schedule = 'flexible';
+  int _cleanlinessLevel = 3;
+  bool _smokingAllowed = false;
+  bool _petsAllowed = false;
+  final List<String> _hobbies = [];
+  final _bioCtrl = TextEditingController();
 
   static const _tunisianUniversities = [
     'any',
@@ -77,6 +84,13 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         _leaseDuration = prefs.leaseDurationMonths;
         _wantFurnished = prefs.wantFurnished;
         _minRooms = prefs.minRooms ?? 1;
+        _schedule = prefs.schedule;
+        _cleanlinessLevel = prefs.cleanlinessLevel;
+        _smokingAllowed = prefs.smokingAllowed;
+        _petsAllowed = prefs.petsAllowed;
+        _hobbies.clear();
+        _hobbies.addAll(prefs.hobbies);
+        _bioCtrl.text = prefs.bio;
       });
     }
   }
@@ -84,6 +98,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   @override
   void dispose() {
     _nationalityCtrl.dispose();
+    _bioCtrl.dispose();
     super.dispose();
   }
 
@@ -107,6 +122,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       wantFurnished: _wantFurnished,
       leaseDurationMonths: _leaseDuration,
       searchHistory: _aiService.getViewHistory(userId),
+      schedule: _schedule,
+      cleanlinessLevel: _cleanlinessLevel,
+      smokingAllowed: _smokingAllowed,
+      petsAllowed: _petsAllowed,
+      hobbies: List.from(_hobbies),
+      bio: _bioCtrl.text.trim(),
     );
     await _aiService.saveUserPreferences(prefs);
     if (mounted) {
@@ -319,6 +340,93 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               ],
             ),
             const SizedBox(height: 32),
+            // ── New IA compatibility fields ──────────────────────────
+            _sectionTitle('⏰ Rythme de vie'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _radioChip('Lève-tôt', 'morning', _schedule,
+                    (v) => setState(() => _schedule = v)),
+                _radioChip('Soir', 'evening', _schedule,
+                    (v) => setState(() => _schedule = v)),
+                _radioChip('Noctambule', 'night', _schedule,
+                    (v) => setState(() => _schedule = v)),
+                _radioChip('Flexible', 'flexible', _schedule,
+                    (v) => setState(() => _schedule = v)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('🧹 Niveau de propreté ($_cleanlinessLevel/5)'),
+            Slider(
+              value: _cleanlinessLevel.toDouble(),
+              min: 1,
+              max: 5,
+              divisions: 4,
+              label: _cleanlinessLabel(_cleanlinessLevel),
+              activeColor: AppColors.primary,
+              onChanged: (v) =>
+                  setState(() => _cleanlinessLevel = v.round()),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _sectionTitle('🚬 Fumeur(se)'),
+                const Spacer(),
+                Switch(
+                  value: _smokingAllowed,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => setState(() => _smokingAllowed = v),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                _sectionTitle('🐾 Animaux acceptés'),
+                const Spacer(),
+                Switch(
+                  value: _petsAllowed,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => setState(() => _petsAllowed = v),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _sectionTitle('🎯 Centres d\'intérêt'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _allHobbies.map((h) {
+                final selected = _hobbies.contains(h);
+                return FilterChip(
+                  label: Text(h),
+                  selected: selected,
+                  selectedColor: AppColors.secondary.withAlpha(30),
+                  checkmarkColor: AppColors.secondary,
+                  onSelected: (v) => setState(() {
+                    if (v) {
+                      _hobbies.add(h);
+                    } else {
+                      _hobbies.remove(h);
+                    }
+                  }),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('✍️ Bio / Présentation'),
+            TextField(
+              controller: _bioCtrl,
+              maxLines: 3,
+              maxLength: 200,
+              decoration: const InputDecoration(
+                hintText: 'Décrivez-vous brièvement pour trouver un bon colocataire…',
+                border: OutlineInputBorder(),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -374,4 +482,36 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  String _cleanlinessLabel(int level) {
+    switch (level) {
+      case 1:
+        return 'Très décontracté';
+      case 2:
+        return 'Décontracté';
+      case 3:
+        return 'Normal';
+      case 4:
+        return 'Très propre';
+      case 5:
+        return 'Impeccable';
+      default:
+        return '$level';
+    }
+  }
+
+  static const _allHobbies = [
+    'Sport',
+    'Musique',
+    'Cinéma',
+    'Cuisine',
+    'Jeux vidéo',
+    'Lecture',
+    'Voyages',
+    'Art',
+    'Yoga',
+    'Nature',
+    'Danse',
+    'Photo',
+  ];
 }

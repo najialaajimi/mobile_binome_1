@@ -22,11 +22,14 @@ class _BookingsScreenState extends State<BookingsScreen>
   late TabController _tabController;
 
   List<Booking> _bookings = [];
+  DateTime _calendarMonth =
+      DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _selectedDay = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadBookings();
   }
 
@@ -49,15 +52,25 @@ class _BookingsScreenState extends State<BookingsScreen>
       return _bookings
           .where((b) =>
               b.status != 'cancelled' && b.scheduledAt.isAfter(now))
-          .toList();
+          .toList()
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     } else if (status == 'past') {
       return _bookings
           .where((b) =>
               b.status != 'cancelled' && b.scheduledAt.isBefore(now))
-          .toList();
+          .toList()
+        ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
     } else {
       return _bookings.where((b) => b.status == 'cancelled').toList();
     }
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+    return months[month - 1];
   }
 
   @override
@@ -67,8 +80,12 @@ class _BookingsScreenState extends State<BookingsScreen>
         title: const Text('Mes Visites'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'À venir'),
+          isScrollable: true,
+          tabs: [
+            Tab(text: 'Calendrier'),
+            Tab(
+                text:
+                    'À venir (${_filterBookings('upcoming').length})'),
             Tab(text: 'Passées'),
             Tab(text: 'Annulées'),
           ],
@@ -77,6 +94,7 @@ class _BookingsScreenState extends State<BookingsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
+          _buildCalendarView(),
           _buildBookingsList(_filterBookings('upcoming')),
           _buildBookingsList(_filterBookings('past')),
           _buildBookingsList(_filterBookings('cancelled')),
@@ -84,6 +102,207 @@ class _BookingsScreenState extends State<BookingsScreen>
       ),
     );
   }
+
+  // ── Calendar view ──────────────────────────────────────────────────
+
+  Widget _buildCalendarView() {
+    final year = _calendarMonth.year;
+    final month = _calendarMonth.month;
+    final firstDay = DateTime(year, month, 1);
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final firstWeekday = firstDay.weekday % 7;
+    final now = DateTime.now();
+
+    final selectedDayBookings = _bookings
+        .where((b) =>
+            b.scheduledAt.year == _selectedDay.year &&
+            b.scheduledAt.month == _selectedDay.month &&
+            b.scheduledAt.day == _selectedDay.day &&
+            b.status != 'cancelled')
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+    return Column(
+      children: [
+        // Calendar header
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+          child: Column(
+            children: [
+              // Month navigation
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: () => setState(() {
+                      _calendarMonth =
+                          DateTime(year, month - 1);
+                    }),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${_monthName(month)} $year',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: () => setState(() {
+                      _calendarMonth =
+                          DateTime(year, month + 1);
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+                    .map((d) => SizedBox(
+                          width: 36,
+                          child: Text(d,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 4),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
+                  childAspectRatio: 1,
+                ),
+                itemCount: firstWeekday + daysInMonth,
+                itemBuilder: (_, i) {
+                  if (i < firstWeekday) return const SizedBox.shrink();
+                  final day = i - firstWeekday + 1;
+                  final date = DateTime(year, month, day);
+                  final isSelected = _selectedDay.year == year &&
+                      _selectedDay.month == month &&
+                      _selectedDay.day == day;
+                  final isToday = now.year == year &&
+                      now.month == month &&
+                      now.day == day;
+                  final hasEvent = _bookings.any((b) =>
+                      b.scheduledAt.year == year &&
+                      b.scheduledAt.month == month &&
+                      b.scheduledAt.day == day &&
+                      b.status != 'cancelled');
+
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedDay = date),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary
+                            : isToday
+                                ? AppColors.primary.withAlpha(20)
+                                : null,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Text(
+                              '$day',
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : null,
+                                fontWeight: isToday || isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          if (hasEvent && !isSelected)
+                            Positioned(
+                              bottom: 2,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.secondary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          child: Row(
+            children: [
+              Text(
+                'Visites du ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary),
+              ),
+              const Spacer(),
+              Text(
+                '${selectedDayBookings.length} visite(s)',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: selectedDayBookings.isEmpty
+              ? const Center(
+                  child: Text('Aucune visite ce jour',
+                      style:
+                          TextStyle(color: AppColors.textSecondary)))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: selectedDayBookings.length,
+                  itemBuilder: (_, i) => _BookingCard(
+                    booking: selectedDayBookings[i],
+                    listingTitle: _listingService
+                            .getListingById(
+                                selectedDayBookings[i].listingId)
+                            ?.title ??
+                        'Logement',
+                    onCancel: selectedDayBookings[i]
+                            .scheduledAt
+                            .isAfter(DateTime.now())
+                        ? () async {
+                            await _bookingService.cancelBooking(
+                                selectedDayBookings[i].id);
+                            _loadBookings();
+                          }
+                        : null,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  // ── List view ────────────────────────────────────────────────────
 
   Widget _buildBookingsList(List<Booking> bookings) {
     if (bookings.isEmpty) {
@@ -163,8 +382,8 @@ class _BookingCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: _statusColor.withAlpha(20),
                     borderRadius: BorderRadius.circular(20),
@@ -203,7 +422,6 @@ class _BookingCard extends StatelessWidget {
             ),
             if (booking.status == 'confirmed') ...[
               const SizedBox(height: 14),
-              // QR Code placeholder
               Container(
                 width: 80,
                 height: 80,
@@ -240,3 +458,5 @@ class _BookingCard extends StatelessWidget {
     );
   }
 }
+
+
