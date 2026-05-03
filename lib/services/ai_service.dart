@@ -104,10 +104,118 @@ class _TextSignal {
 class AiService {
   static const _prefsKey = 'user_preferences_';
   static const _historyKey = 'view_history_';
+  static const _seededKey = 'ai_prefs_seeded_v1';
 
   final StorageService _storage = StorageService.instance;
   final ListingService _listingService = ListingService();
   final AuthService _authService = AuthService();
+
+  // ── Seed demo preferences ─────────────────
+
+  Future<void> init() async {
+    if (_storage.getBool(_seededKey) == true) return;
+    await _seedDemoPreferences();
+    await _storage.setBool(_seededKey, true);
+  }
+
+  Future<void> _seedDemoPreferences() async {
+    final seeds = [
+      UserPreferences(
+        userId: 'tenant_1',
+        budgetMin: 300,
+        budgetMax: 700,
+        preferredTypes: const ['apartment', 'colocation'],
+        lifestyle: 'calme',
+        isStudent: true,
+        studyField: 'informatique',
+        nearUniversity: 'ESPRIT',
+        preferredLanguage: 'fr',
+        nationality: 'Tunisien',
+        minRooms: 1,
+        wantFurnished: true,
+        leaseDurationMonths: 6,
+        schedule: 'morning',
+        cleanlinessLevel: 4,
+        smokingAllowed: false,
+        petsAllowed: false,
+        hobbies: const ['Sport', 'Lecture', 'Jeux vidéo', 'Cinéma'],
+        bio: 'Étudiant sérieux en informatique, cherche coloc calme et propre.',
+        searchHistory: const [],
+      ),
+      UserPreferences(
+        userId: 'tenant_2',
+        budgetMin: 250,
+        budgetMax: 600,
+        preferredTypes: const ['colocation', 'studio'],
+        lifestyle: 'calme',
+        isStudent: true,
+        studyField: 'médecine',
+        nearUniversity: 'Université de Tunis',
+        preferredLanguage: 'fr',
+        nationality: 'Tunisienne',
+        minRooms: 1,
+        wantFurnished: true,
+        leaseDurationMonths: 12,
+        schedule: 'morning',
+        cleanlinessLevel: 5,
+        smokingAllowed: false,
+        petsAllowed: false,
+        hobbies: const ['Yoga', 'Lecture', 'Cinéma', 'Cuisine'],
+        bio: 'Étudiante en médecine, discrète, cherche environnement studieux.',
+        searchHistory: const [],
+      ),
+      UserPreferences(
+        userId: 'tenant_3',
+        budgetMin: 300,
+        budgetMax: 650,
+        preferredTypes: const ['apartment', 'colocation'],
+        lifestyle: 'anime',
+        isStudent: true,
+        studyField: 'ingénierie',
+        nearUniversity: 'INSAT',
+        preferredLanguage: 'fr',
+        nationality: 'Sénégalais',
+        minRooms: 2,
+        wantFurnished: false,
+        leaseDurationMonths: 6,
+        schedule: 'evening',
+        cleanlinessLevel: 3,
+        smokingAllowed: false,
+        petsAllowed: true,
+        hobbies: const ['Sport', 'Musique', 'Voyages', 'Danse'],
+        bio: 'Étudiant ingénieur dynamique, fan de sport et musique.',
+        searchHistory: const [],
+      ),
+      UserPreferences(
+        userId: 'tenant_4',
+        budgetMin: 500,
+        budgetMax: 1200,
+        preferredTypes: const ['apartment', 'house'],
+        lifestyle: 'any',
+        isStudent: false,
+        studyField: '',
+        nearUniversity: 'any',
+        preferredLanguage: 'fr',
+        nationality: 'Française',
+        minRooms: 2,
+        wantFurnished: true,
+        leaseDurationMonths: 12,
+        schedule: 'flexible',
+        cleanlinessLevel: 4,
+        smokingAllowed: false,
+        petsAllowed: true,
+        hobbies: const ['Cuisine', 'Voyages', 'Art', 'Photo'],
+        bio: 'Professionnelle française, calme et ordonnée.',
+        searchHistory: const [],
+      ),
+    ];
+    for (final p in seeds) {
+      // Only seed if not already saved by the user themselves
+      if (_storage.getString('$_prefsKey${p.userId}') == null) {
+        await saveUserPreferences(p);
+      }
+    }
+  }
 
   // ── Preferences ────────────────────────────
 

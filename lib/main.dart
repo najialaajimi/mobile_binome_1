@@ -26,6 +26,7 @@ import 'screens/owner/agenda_screen.dart';
 import 'screens/owner/profile_screen.dart';
 import 'screens/admin/dashboard_screen.dart';
 import 'services/review_service.dart';
+import 'services/ai_service.dart';
 import 'screens/tenant/ai_recommendations_screen.dart';
 import 'screens/tenant/preferences_screen.dart';
 import 'screens/tenant/roommate_finder_screen.dart';
@@ -53,6 +54,7 @@ Future<void> main() async {
   await MessageService().init();
   await ApplicationService().init();
   await ReviewService().init();
+  await AiService().init();
 
   runApp(const LogementApp());
 }
